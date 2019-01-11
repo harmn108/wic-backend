@@ -248,13 +248,6 @@ class Application
      */
     private $tags;
 
-    /**
-     * @var Archive $archive
-     * @ORM\ManyToOne(targetEntity="Archive")
-     * @ORM\JoinColumn(name="archive", nullable=true, referencedColumnName="id", onDelete="SET NULL")
-     * @Groups({"archive_fields"})
-     */
-    private $archive;
 
     /**
      * @return mixed
@@ -660,21 +653,5 @@ class Application
     public function setTags(string $tags): void
     {
         $this->tags = $tags;
-    }
-
-    /**
-     * @return Archive
-     */
-    public function getArchive()
-    {
-        return $this->archive;
-    }
-
-    /**
-     * @param Archive $archive
-     */
-    public function setArchive(Archive $archive = null): void
-    {
-        $this->archive = $archive;
     }
 }
