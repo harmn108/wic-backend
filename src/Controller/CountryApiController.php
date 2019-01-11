@@ -37,6 +37,14 @@ class CountryApiController extends Controller
      */
     public function getAllUsersAction(Request $request)
     {
+        $token = $request->headers->get('X-API-TOKEN');
+
+        $xApiToken = $this->getParameter('x_api_token');
+
+        // token validation
+        if ($token !== $xApiToken) {
+            return new JsonResponse(Response::$statusTexts[Response::HTTP_UNAUTHORIZED], Response::HTTP_UNAUTHORIZED);
+        }
 
         $em = $this->getDoctrine()->getManager();
 
