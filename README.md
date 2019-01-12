@@ -1,4 +1,4 @@
-# Historian Prize
+# WIC
 
 
 This is Erclet backend project based on [symfony 4 framework](http://symfony.com/).
