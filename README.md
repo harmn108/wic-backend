@@ -32,7 +32,7 @@ create database via symfony's console with name: **wic**
 bin/console doctrine:database:create
 ```
 
-create database tables (schema) via symfony's console
+create database tables (schema and default 10 countries in 'country' table) via symfony's console
 ```
 bin/console doctrine:migrations:migrate
 ```
