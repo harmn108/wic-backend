@@ -6,6 +6,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Country;
+use App\Entity\Place;
+use App\Service\Zippopotam;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,6 +32,8 @@ class PlaceApiController extends Controller
      * @Route("/get-by-filter/{parameters}", methods={"GET"}, name="get_aplaces_by_filter_action")
      * @param $parameters
      * @param Request $request
+     * @param Zippopotam $zippopotam
+     *
      * @SWG\Parameter( name="X-API-TOKEN", in="header", required=true, type="string", description="Authorization token" ),
      * @SWG\Response(
      *     response=200,
@@ -36,43 +42,69 @@ class PlaceApiController extends Controller
      * @SWG\Tag(name="Place")
      * @return JsonResponse
      */
-    public function getByFilterApplicationAction($parameters, Request $request)
+    public function getByFilterApplicationAction($parameters, Request $request, Zippopotam $zippopotam)
     {
+        $token = $request->headers->get('X-API-TOKEN');
+
+        $xApiToken = $this->getParameter('x_api_token');
+
+        // token validation
+        if ($token !== $xApiToken) {
+            return new JsonResponse(Response::$statusTexts[Response::HTTP_UNAUTHORIZED], Response::HTTP_UNAUTHORIZED);
+        }
+
         $em = $this->getDoctrine()->getManager();
 
         $parameters = json_decode($parameters, true);
 
-//        echo "<pre>"; print_r($parameters); echo "</pre>"; die();
-//        $applications = $em->getRepository(Place::class)->getApplicationByFilter($parameters);
-//
-//        $applicationsList = [];
-//        if ($applications) {
-//            /**
-//             * @var $serializer Serializer
-//             */
-//            $serializer = $this->get('serializer');
-//
-//            $applicationsList = $serializer->normalize($applications, null, ['groups' => ['application']]);
-//        }
-//        $appIds = [];
-//        foreach ($applicationsList as $application) {
-//            $appIds[] = $application[0]['id'];
-//        }
-//
-//        $sdList = $em->getRepository(SecretariatDecisions::class)->getSecretariatDecisionsByApplication($appIds);
-//        $sdList = $serializer->normalize($sdList, null, ['groups' => ['secretariat_decisions_fields']]);
-//
-//        foreach ($applicationsList as $key => $app) {
-//            $applicationsList[$key][0]['secretariatDecisions'] = [];
-//
-//            foreach ($sdList as $item) {
-//                if ($app[0]['id'] == $item['application']['id']) {
-//                    $applicationsList[$key][0]['secretariatDecisions'][] = $item;
-//                };
-//            }
-//        }
+        $country = $parameters['country'];
+        $zipCode = $parameters['zip_code'];
 
-        return new JsonResponse(['result' => $parameters]);
+        /**
+         * @var $countryObj Country
+         */
+        $countryObj = $em->getRepository(Country::class)->findOneBy(['code' => mb_strtolower($country)]);
+
+        if(!$countryObj) {
+            return new JsonResponse(['message' => 'Country Code Not Available'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $parameters['country'] = $countryObj->getId();
+
+        /**
+         * @var $places Paginator
+         */
+        $places = $em->getRepository(Place::class)->getPlacesByFilter($parameters);
+
+        if(!$places || !$places->count()) {
+
+            /**
+             * @var $zippopotam Zippopotam
+             */
+            $zippopotam->searchAndStorePlaces($countryObj, $zipCode);
+
+            $places = $em->getRepository(Place::class)->getPlacesByFilter($parameters);
+        }
+
+        $placesList = self::serializerPlaces($places);
+
+        $placesCount = $places ? $places->count() : 0;
+
+        return new JsonResponse(['result' => $placesList, 'count' => $placesCount]);
     }
 
+    private function serializerPlaces($places) {
+        $placesList = [];
+
+        if($places) {
+            /**
+             * @var $serializer Serializer
+             */
+            $serializer = $this->get('serializer');
+
+            $placesList = $serializer->normalize($places, null, ['groups' => ['place']]);
+        }
+
+        return $placesList;
+    }
 }

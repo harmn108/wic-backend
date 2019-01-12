@@ -1,14 +1,11 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: grigor
- * Date: 5/17/18
- * Time: 5:21 PM
+ * User: harut
  */
 
 namespace App\Repository;
 
-use DateTime;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -24,11 +21,9 @@ class PlaceRepository extends EntityRepository
 
     /**
      * @param $fields
-     * @param $count
-     * @param $offset
      * @return Paginator
      */
-    public function getApplicationByFilter($fields)
+    public function getPlacesByFilter($fields)
     {
         /**
          * @var EntityManager $em
@@ -36,7 +31,9 @@ class PlaceRepository extends EntityRepository
         $em = $this->getEntityManager();
         $parameters = [];
 
-        $query = $this->createQueryBuilder('a')->select('a, (SELECT SUM(vs.score) FROM App\Entity\Voting vs WHERE a.id = vs.application) as scoresSum');
+        $query = $this->createQueryBuilder('p')->select('p')
+            ->leftJoin('p.zipCode', 'zc');
+
         $count = 1000;
         $offset = 0;
 
@@ -48,32 +45,20 @@ class PlaceRepository extends EntityRepository
                     } else if ($key === 'offset'){
                         $offset = $value;
                     }
-                } else if($key === 'status'){
-                    if(is_array($value) && count($value)){
-                        $query->andWhere('a.' . $key  . ' IN ('  . implode(',', $value) .')');
-                    } else {
-                        $parameters[$key] = $value;
-                        $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
-                    }
-                } else if ($key === 'comment') {
-                    $parameters[$key] =  '%' . $value . '%';
-                    $query->andWhere('a.' . $key  . ' LIKE ' .  ':' . $key);
-                } else if($key === 'xApiDate'){
-                    $xApiDate = new DateTime($value . ' 23:59:59');
-                    $parameters[$key] = $xApiDate;
-                    $query->andWhere('a.created <=' .  ':' . $key);
-                } else if($key === 'xArchiveId'){
-                    $key = 'archive';
+                } else if($key === 'country'){
                     $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
+                    $query->andWhere('zc.' . $key  . ' = ' .  ':' . $key);
+                } else if($key === 'zip_code'){
+                    $parameters[$key] =  '%' . $value . '%';
+                    $query->andWhere('zc.zipCode' . ' LIKE ' .  ':' . $key);
                 } else {
                     $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
+                    $query->andWhere('p.' . $key  . ' = ' .  ':' . $key);
                 }
             }
         }
 
-        $query->orderBy('a.created', 'DESC');
+        $query->orderBy('p.id', 'ASC');
 
         $query = $em
             ->createQuery($query->getDQL())
@@ -84,162 +69,5 @@ class PlaceRepository extends EntityRepository
         $paginator = new Paginator($query, $fetchJoinCollection = true);
 
         return $paginator;
-    }
-
-    /**
-     * @param $fields
-     * @param $count
-     * @param $offset
-     * @return Paginator
-     */
-    public function getEligibleApplicationsByFilter($fields)
-    {
-        /**
-         * @var EntityManager $em
-         */
-        $em = $this->getEntityManager();
-        $parameters = [];
-
-        if (isset($fields['user']) && $fields['user']) {
-            $query = $this->createQueryBuilder('a')->select('a, 
-                (SELECT v.id FROM App\Entity\Voting v WHERE a.id = v.application AND v.user = :user) as votingId,
-                (SELECT vc.confirmed FROM App\Entity\Voting vc WHERE a.id = vc.application AND vc.user = :user) as votingConfirmed,
-                (SELECT COUNT(vn.id) FROM App\Entity\Voting vn WHERE a.id = vn.application AND vn.confirmed > 0) as expertsConfirmedVotesCount');
-        } else {
-            $query = $this->createQueryBuilder('a')->select('a');
-        }
-
-        $count = 1000;
-        $offset = 0;
-
-        foreach ($fields as $key => $value) {
-            if($value){
-                if($key === 'count' || $key === 'offset'){
-                    if($key === 'count'){
-                        $count = $value;
-                    } else if ($key === 'offset'){
-                        $offset = $value;
-                    }
-                }  else if ($key === 'comment') {
-                    $parameters[$key] =  '%' . $value . '%';
-                    $query->andWhere('a.' . $key  . ' LIKE ' .  ':' . $key);
-                } else if($key === 'xApiDate'){
-                    $xApiDate = new DateTime($value . ' 23:59:59');
-                    $parameters[$key] = $xApiDate;
-                    $query->andWhere('a.created <=' .  ':' . $key);
-                } else if($key === 'xArchiveId'){
-                    $key = 'archive';
-                    $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
-                } else if ($key != 'user') {
-                    $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
-                }
-            }
-        }
-
-        $query->andWhere("a.id IS NOT NULL");
-        $query->andWhere('a.status = 1');
-
-        if (isset($fields['user']) && $fields['user']) {
-            $parameters['user'] = $fields['user'];
-        }
-
-        $query->orderBy('a.created', 'DESC');
-
-        $query = $em
-            ->createQuery($query->getDQL())
-            ->setParameters($parameters)
-            ->setFirstResult($offset)
-            ->setMaxResults($count);
-
-        $paginator = new Paginator($query, $fetchJoinCollection = true);
-
-        return $paginator;
-    }
-
-
-    /**
-     * @param $fields
-     * @param $count
-     * @param $offset
-     * @return Paginator
-     */
-    public function getSelectionBoardReport($fields)
-    {
-        /**
-         * @var EntityManager $em
-         */
-        $em = $this->getEntityManager();
-        $parameters = [];
-
-        $query = $this->createQueryBuilder('a')
-            ->select('a, 
-            (SELECT SUM(vs.score) FROM App\Entity\Voting vs WHERE a.id = vs.application) as scoresSum,
-            (SELECT COUNT(vconf.id) FROM App\Entity\Voting vconf WHERE a.id = vconf.application AND vconf.confirmed > 0) as expertsConfirmedVotesCount'
-            );
-
-        $count = 1000;
-        $offset = 0;
-
-        foreach ($fields as $key => $value) {
-            if($value){
-                if($key === 'count' || $key === 'offset'){
-                    if($key === 'count'){
-                        $count = $value;
-                    } else if ($key === 'offset'){
-                        $offset = $value;
-                    }
-                }  else if ($key === 'comment') {
-                    $parameters[$key] =  '%' . $value . '%';
-                    $query->andWhere('a.' . $key  . ' LIKE ' .  ':' . $key);
-                } else if($key === 'xApiDate'){
-                    $xApiDate = new DateTime($value . ' 23:59:59');
-                    $parameters[$key] = $xApiDate;
-                    $query->andWhere('a.created <=' .  ':' . $key);
-                } else if($key === 'xArchiveId'){
-                    $key = 'archive';
-                    $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
-                } else if ($key != 'user') {
-                    $parameters[$key] = $value;
-                    $query->andWhere('a.' . $key  . ' = ' .  ':' . $key);
-                }
-            }
-        }
-
-        $query->andWhere("a.id IS NOT NULL");
-        $query->andWhere('a.status != :status');
-        $parameters[':status'] = 2; // 'Ineligible'
-
-        $query->orderBy('a.created', 'DESC');
-
-        $query = $em
-            ->createQuery($query->getDQL())
-            ->setParameters($parameters)
-            ->setFirstResult($offset)
-            ->setMaxResults($count);
-
-        $paginator = new Paginator($query, $fetchJoinCollection = true);
-
-        return $paginator;
-    }
-
-    public function getApplicationWithVotingId($application, $user)
-    {
-        /**
-         * @var EntityManager $em
-         */
-        $em = $this->getEntityManager();
-
-        $usersDataQuery = $em
-            ->createQuery('SELECT a, (SELECT v.id FROM App:Voting v WHERE a.id = v.application AND v.user = :user) as votingId
-                                FROM App:Place as a 
-                                WHERE a.id = :application AND a.id IS NOT NULL')
-            ->setParameters(['application' => $application, 'user' => $user]);
-
-        $usersData = $usersDataQuery->getResult();
-
-        return $usersData;
     }
 }

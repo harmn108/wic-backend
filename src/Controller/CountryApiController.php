@@ -35,7 +35,7 @@ class CountryApiController extends Controller
      * @SWG\Tag(name="Country")
      * @return JsonResponse
      */
-    public function getAllUsersAction(Request $request)
+    public function getAllCountriesAction(Request $request)
     {
         $token = $request->headers->get('X-API-TOKEN');
 
