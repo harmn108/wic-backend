@@ -41,7 +41,7 @@ bin/console doctrine:migrations:migrate
 
 on development machine it is possible to run a php build-in server which must not be used on produciton server
 ```
-bin/console server:start 127.0.0.1:8081
+bin/console server:run 127.0.0.1:8081
 ```
 
 configuration of production server (Apache / Nginx) can be found in official documentation at [Configuring a Web Server](http://symfony.com/doc/current/setup/web_server_configuration.html).

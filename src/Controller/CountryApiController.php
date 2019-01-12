@@ -48,7 +48,7 @@ class CountryApiController extends Controller
 
         $em = $this->getDoctrine()->getManager();
 
-        $countries = $em->getRepository(Country::class)->findAll();
+        $countries = $em->getRepository(Country::class)->findBy([], ['name' => 'ASC']);
 
         $countriesList = [];
 
